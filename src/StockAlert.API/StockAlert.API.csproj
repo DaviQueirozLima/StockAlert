@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>55737502-9946-4018-84cc-8e134800b754</UserSecretsId>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <DockerfileContext>..\..</DockerfileContext>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.3" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Controllers\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\StockAlert.Application\StockAlert.Application.csproj" />
+    <ProjectReference Include="..\StockAlert.Communication\StockAlert.Communication.csproj" />
+    <ProjectReference Include="..\StockAlert.Exception\StockAlert.Exception.csproj" />
+    <ProjectReference Include="..\StockAlert.Infrastructure\StockAlert.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
