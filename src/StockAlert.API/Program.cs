@@ -22,17 +22,29 @@ builder.Services.AddControllers(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    // 1. Define o esquema de segurança
+    var securityScheme = new OpenApiSecurityScheme
     {
-        Description = "Digite: Bearer {seu token}",
         Name = "Authorization",
+        Description = "Digite seu token JWT: **Bearer {seu_token}**",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.Http,
         Scheme = "bearer",
         BearerFormat = "JWT"
+    };
+
+    // 2. Registra a definição com o ID "Bearer"
+    options.AddSecurityDefinition("Bearer", securityScheme);
+
+    // 3. Aplica a segurança globalmente (Sintaxe Funcional do Swashbuckle 10)
+    options.AddSecurityRequirement(doc => new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecuritySchemeReference("Bearer", doc),
+            new List<string>()
+        }
     });
 });
-
 // Database
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
