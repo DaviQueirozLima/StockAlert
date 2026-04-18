@@ -1,9 +1,8 @@
 ﻿using FluentValidation;
-using StockAlert.Communication.Requests.Stock;
 
 namespace StockAlert.Application.Stock.Validators
 {
-    public class RegisterStockValidator : AbstractValidator<RegisterStockRequest>
+    public class RegisterStockValidator : AbstractValidator<StockAlert.Communication.Requests.Stock.RegisterStockRequest>
     {
         public RegisterStockValidator() 
         { 
