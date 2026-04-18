@@ -1,8 +1,12 @@
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using StockAlert.API.Filters;
 using StockAlert.Application.Auth.UseCases;
+using StockAlert.Application.Stock.UseCases;
+using StockAlert.Application.Stock.Validators;
+using StockAlert.Communication.Requests.Stock;
 using StockAlert.Domain.Repositories;
 using StockAlert.Domain.Security;
 using StockAlert.Infrastructure.Data;
@@ -53,7 +57,13 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // DI
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ITokenService, JwtTokenGenerator>();
+builder.Services.AddScoped<StockAlert.Domain.Repositories.IStockRepository, StockAlert.Infrastructure.Repositories.StockRepository>();
+
 builder.Services.AddScoped<LoginWithGoogleUseCase>();
+builder.Services.AddScoped<FluentValidation.IValidator<StockAlert.Communication.Requests
+    .Stock.RegisterStockRequest>, StockAlert.Application.Stock.Validators.RegisterStockValidator>();
+
+builder.Services.AddScoped<StockAlert.Application.Stock.UseCases.RegisterStockUseCase>();
 
 // JWT Authentication
 builder.Services.AddAuthentication("Bearer")
@@ -83,7 +93,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// 🔐 Ordem correta
+//  Ordem correta
 app.UseAuthentication();
 app.UseAuthorization();
 

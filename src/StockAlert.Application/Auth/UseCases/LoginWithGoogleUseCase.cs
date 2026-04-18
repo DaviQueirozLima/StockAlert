@@ -39,7 +39,7 @@ public class LoginWithGoogleUseCase
                 Audience = new[] { clientId }
             };
 
-            // 🔐 Validação segura do token
+            //  Validação segura do token
             payload = await GoogleJsonWebSignature.ValidateAsync(request.IdToken, settings);
         }
         catch (InvalidJwtException)
@@ -51,10 +51,10 @@ public class LoginWithGoogleUseCase
             throw new StockAlertException("Error validating Google token.");
         }
 
-        // 🔎 Buscar usuário
+        //  Buscar usuário
         var user = await _userRepository.GetByGoogleIdAsync(payload.Subject);
 
-        // 🆕 Criar usuário automaticamente
+        //  Criar usuário automaticamente
         if (user == null)
         {
             user = new User
@@ -68,7 +68,7 @@ public class LoginWithGoogleUseCase
             await _userRepository.Add(user);
         }
 
-        // 🔑 Gerar JWT
+        //  Gerar JWT
         var token = _tokenService.GenerateToken(user);
 
         return new LoginResponse
