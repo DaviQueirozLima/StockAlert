@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using StockAlert.API.Filters;
-using StockAlert.Application.AlertRule.Validator;
 using StockAlert.Application.Auth.UseCases;
 using StockAlert.Domain.Repositories;
 using StockAlert.Domain.Security;
@@ -64,8 +63,10 @@ builder.Services.AddScoped<StockAlert.Domain.Repositories.IStockRepository, Stoc
 builder.Services.AddScoped<FluentValidation.IValidator<StockAlert.Communication.Requests
     .AlertRule.RegisterAlertRuleRequest>, StockAlert.Application.AlertRule.Validator.RegisterAlertRuleValidator>();
 builder.Services.AddScoped<StockAlert.Domain.Repositories.IAlertRuleRepository, StockAlert.Infrastructure.Repositories.AlertRuleRepository>();
+builder.Services.AddScoped<StockAlert.Application.AlertRule.UseCases.RegisterAlertRuleUseCase>();
 builder.Services.AddHttpContextAccessor(); 
 builder.Services.AddScoped<ILoggedUserAccessor, LoggedUserAccessor>();
+
 
 // JWT Authentication
 builder.Services.AddAuthentication("Bearer")
