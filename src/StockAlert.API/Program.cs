@@ -5,7 +5,9 @@ using StockAlert.API.Filters;
 using StockAlert.Application.Auth.UseCases;
 using StockAlert.Domain.Repositories;
 using StockAlert.Domain.Security;
+using StockAlert.Domain.Services;
 using StockAlert.Infrastructure.Data;
+using StockAlert.Infrastructure.ExternalServices.Brapi;
 using StockAlert.Infrastructure.Repositories;
 using StockAlert.Infrastructure.Security;
 using System.Text;
@@ -68,6 +70,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ILoggedUserAccessor, LoggedUserAccessor>();
 
 
+builder.Services.AddHttpClient<IBrapiService, BrapiService>();
 // JWT Authentication
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
