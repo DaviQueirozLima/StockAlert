@@ -20,23 +20,22 @@ namespace StockAlert.Infrastructure.Repositories
 
         public async Task DeleteAsync(Guid id)
         {
-            return await _dbContext.AlertRules
-             .AsNoTracking()
-             .Where(r => r.UserId == userId && r.DeletedAt == null)
-             .ToListAsync();
-        }
-
-        public async Task<IEnumerable<AlertRule>> GetByUserIdAsync(Guid userId)
-        {
             var rule = await _dbContext.AlertRules.FindAsync(id);
             if (rule != null)
             {
-                // Implementando o Soft Delete: apenas marcamos a data de exclusão
                 rule.DeletedAt = DateTime.UtcNow;
                 rule.IsActive = false;
                 _dbContext.AlertRules.Update(rule);
                 await _dbContext.SaveChangesAsync();
             }
+        }
+
+        public async Task<IEnumerable<AlertRule>> GetByUserIdAsync(Guid userId)
+        {
+            return await _dbContext.AlertRules
+                .AsNoTracking()
+                .Where(r => r.UserId == userId && r.DeletedAt == null)
+                .ToListAsync();
         }
     }
 }
