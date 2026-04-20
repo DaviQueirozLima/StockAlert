@@ -12,6 +12,7 @@
 
 	<ItemGroup>
 		<!-- Entity Framework Core & PostgreSQL (Sincronizado na 10.0.4 para satisfazer o Npgsql) -->
+		<PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.9" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.4" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.4">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
