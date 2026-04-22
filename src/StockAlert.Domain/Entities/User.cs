@@ -33,6 +33,7 @@
         public ICollection<AlertRule> Alerts { get; set; } = new List<AlertRule>();
         public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
         public ICollection<NotificationHistory> NotificationHistory { get; set; } = new List<NotificationHistory>();
+        public ICollection<Stock> Stocks { get; set; } = new List<Stock>();
 
         // Role opcional
         public Guid? RoleId { get; set; }

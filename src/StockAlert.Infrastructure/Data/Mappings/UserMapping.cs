@@ -82,6 +82,11 @@ namespace StockAlert.Infrastructure.Data.Mappings
                 .WithMany()
                 .HasForeignKey(u => u.RoleId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            builder.HasMany(u => u.Stocks) 
+                .WithOne(s => s.User) 
+                .HasForeignKey(s => s.UserId) 
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

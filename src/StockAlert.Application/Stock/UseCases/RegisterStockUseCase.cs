@@ -1,40 +1,45 @@
-﻿using FluentValidation;
-using StockAlert.Communication.Requests.Stock;
-using StockAlert.Communication.Responses.Stock;
-using StockAlert.Domain.Repositories;
+﻿// Local: src/StockAlert.Application/Stock/UseCases/RegisterStockUseCase.cs
 
 namespace StockAlert.Application.Stock.UseCases;
 
 public class RegisterStockUseCase
 {
-    private readonly IStockRepository _stockRepository;
-    private readonly IValidator<RegisterStockRequest> _validator;
+    private readonly StockAlert.Domain.Repositories.IStockRepository _stockRepository;
+    private readonly FluentValidation.IValidator<StockAlert.Communication.Requests.Stock.RegisterStockRequest> _validator;
+    private readonly StockAlert.Domain.Security.ILoggedUserAccessor _loggedUserAccessor;
+    private readonly StockAlert.Domain.Services.IBrapiService _brapiService;
 
     public RegisterStockUseCase(
-     IStockRepository stockRepository,
-     IValidator<StockAlert.Communication.Requests.Stock.RegisterStockRequest> validator) 
+        StockAlert.Domain.Repositories.IStockRepository stockRepository,
+        FluentValidation.IValidator<StockAlert.Communication.Requests.Stock.RegisterStockRequest> validator,
+        StockAlert.Domain.Security.ILoggedUserAccessor loggedUserAccessor,
+        StockAlert.Domain.Services.IBrapiService brapiService)
     {
         _stockRepository = stockRepository;
         _validator = validator;
+        _loggedUserAccessor = loggedUserAccessor;
+        _brapiService = brapiService;
     }
 
-    public async Task<StockResponse> Execute(RegisterStockRequest request)
+    public async Task<StockAlert.Communication.Responses.Stock.StockResponse> Execute(StockAlert.Communication.Requests.Stock.RegisterStockRequest request)
     {
-        // 1. Validar a requisição usando o FluentValidation que você criou
         var validationResult = await _validator.ValidateAsync(request);
         if (!validationResult.IsValid)
         {
             var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            throw new Exception.ValidationException(errors); // Sua exceção customizada
+            // USANDO O CAMINHO COMPLETO PARA A EXCEÇÃO:        
+            throw new StockAlert.Exception.ValidationException(errors);
         }
 
-        // 2. Verificar se a ação já está cadastrada
-        var existingStock = await _stockRepository.GetBySymbolAsync(request.Symbol);
+        var userId = _loggedUserAccessor.GetUserId();
+        var symbol = request.Symbol.ToUpper();
+
+        // USANDO O MÉTODO ATUALIZADO NO REPOSITÓRIO:
+        var existingStock = await _stockRepository.GetBySymbolAndUserIdAsync(symbol, userId);
 
         if (existingStock != null)
         {
-            // Se já existe, apenas retornamos os dados atuais
-            return new StockResponse
+            return new StockAlert.Communication.Responses.Stock.StockResponse
             {
                 Symbol = existingStock.Symbol,
                 CurrentPrice = existingStock.CurrentPrice,
@@ -42,20 +47,25 @@ public class RegisterStockUseCase
             };
         }
 
-        // 3. Criar a nova entidade de Stock
-        var newStock = new Domain.Entities.Stock
+        var quote = await _brapiService.GetStockQuoteAsync(symbol);
+        if (quote == null)
+        {           
+            throw new StockAlert.Exception.ValidationException(new List<string> { $"Ação {symbol} não encontrada." });
+        }
+
+        // USANDO O CAMINHO COMPLETO PARA A ENTIDADE:
+        var newStock = new StockAlert.Domain.Entities.Stock
         {
-            Symbol = request.Symbol.ToUpper(),
-            CurrentPrice = 0, // Será atualizado pelo serviço externo no futuro
+            Symbol = symbol,
+            CurrentPrice = quote.Price,
             LastUpdated = DateTime.UtcNow,
-            Source = "Manual Registration"
+            Source = "Brapi Integration",
+            UserId = userId
         };
 
-        // 4. Salvar no banco
         await _stockRepository.AddAsync(newStock);
 
-        // 5. Retornar a resposta padronizada
-        return new StockResponse
+        return new StockAlert.Communication.Responses.Stock.StockResponse
         {
             Symbol = newStock.Symbol,
             CurrentPrice = newStock.CurrentPrice,

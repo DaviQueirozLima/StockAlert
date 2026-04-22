@@ -2,13 +2,14 @@
 {
     public class Stock
     {
-        // Você pode usar Symbol como chave primária se preferir
         public string Symbol { get; set; } = default!;
+        public Guid UserId { get; set; }
+        public User User { get; set; } = default!;
 
         public decimal CurrentPrice { get; set; }
         public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 
-        // Fonte do preço (ex: "YahooFinance", "AlphaVantage")
+        // Fonte do preço (ex: "YahooFinance", "AlphaVantage, Brapi")
         public string? Source { get; set; }
 
     }

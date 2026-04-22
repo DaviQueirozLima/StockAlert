@@ -1,4 +1,6 @@
-﻿using FluentValidation;
+﻿// Local: src/StockAlert.Application/AlertRule/UseCases/RegisterAlertRuleUseCase.cs
+
+using FluentValidation;
 using StockAlert.Communication.Requests.AlertRule;
 using StockAlert.Communication.Responses.AlertRule;
 using StockAlert.Domain.Repositories;
@@ -9,55 +11,68 @@ namespace StockAlert.Application.AlertRule.UseCases
     public class RegisterAlertRuleUseCase
     {
         private readonly IAlertRuleRepository _repository;
+        private readonly IStockRepository _stockRepository; // Repositório de Stock para validar a existência
         private readonly IValidator<RegisterAlertRuleRequest> _validator;
         private readonly ILoggedUserAccessor _loggedUserAccessor;
 
         public RegisterAlertRuleUseCase(
             IAlertRuleRepository repository,
+            IStockRepository stockRepository,
             IValidator<RegisterAlertRuleRequest> validator,
             ILoggedUserAccessor loggedUserAccessor)
         {
             _repository = repository;
+            _stockRepository = stockRepository;
             _validator = validator;
             _loggedUserAccessor = loggedUserAccessor;
         }
+
         public async Task<AlertRuleResponse> Execute(RegisterAlertRuleRequest request)
         {
-            // 1. Validar a requisição
+            // 1. Validação da requisição usando FluentValidation
             var validationResult = await _validator.ValidateAsync(request);
             if (!validationResult.IsValid)
             {
                 var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-                throw new Exception.ValidationException(errors);
+                throw new StockAlert.Exception.ValidationException(errors);
             }
 
-            // 2. Obter o ID do usuário logado através do seu novo Accessor
+            // 2. Obtém o ID do usuário logado
             var userId = _loggedUserAccessor.GetUserId();
+            var symbol = request.StockSymbol.ToUpper();
 
-            // 3. Mapear DTO para Entidade
+            // 3. Validação de Regra de Negócio: A ação deve estar cadastrada para o usuário
+            // Isso garante que a regra de alerta esteja conectada a um monitoramento real
+            var stock = await _stockRepository.GetBySymbolAndUserIdAsync(symbol, userId);
+            if (stock == null)
+            {
+                throw new StockAlert.Exception.ValidationException(
+                    new List<string> { $"The stock {symbol} must be registered before creating an alert rule." });
+            }
+
+            // 4. Mapeamento da Entidade de Domínio
             var alertRule = new Domain.Entities.AlertRule
             {
                 UserId = userId,
-                StockSymbol = request.StockSymbol.ToUpper(),
+                StockSymbol = symbol,
                 TargetPrice = request.TargetPrice,
                 PercentageChange = request.PercentageChange,
-                // Fazemos o cast do Enum do Communication para o do Domain
                 Operator = (Domain.Enums.ComparisonOperator)request.Operator,
                 NotifyOnce = request.NotifyOnce,
                 IsActive = true
             };
 
-            // 4. Salvar no banco
+            // 5. Persistência da regra no banco de dados
             await _repository.AddAsync(alertRule);
 
-            // 5. Retornar a resposta
+            // 6. Mapeamento e retorno da resposta
             return new AlertRuleResponse
             {
                 Id = alertRule.Id,
                 StockSymbol = alertRule.StockSymbol,
                 TargetPrice = alertRule.TargetPrice,
                 PercentageChange = alertRule.PercentageChange,
-                Operator = request.Operator, // Mantemos o do Communication na volta
+                Operator = request.Operator,
                 IsActive = alertRule.IsActive
             };
         }
