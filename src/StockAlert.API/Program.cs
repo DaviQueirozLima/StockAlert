@@ -69,8 +69,9 @@ builder.Services.AddScoped<StockAlert.Application.AlertRule.UseCases.RegisterAle
 builder.Services.AddHttpContextAccessor(); 
 builder.Services.AddScoped<ILoggedUserAccessor, LoggedUserAccessor>();
 
-
+builder.Services.AddScoped<IBrapiService, BrapiService>();
 builder.Services.AddHttpClient<IBrapiService, BrapiService>();
+
 // JWT Authentication
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>

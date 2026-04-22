@@ -14,23 +14,21 @@ public class StockRepository : IStockRepository
         _dbContext = dbContext;
     }
 
-    public async Task<Stock?> GetBySymbolAsync(string symbol)
+    // Mudança aqui: O filtro agora usa Symbol E UserId
+    public async Task<Stock?> GetBySymbolAndUserIdAsync(string symbol, Guid userId)
     {
-        // Buscamos a ação pelo símbolo (ex: PETR4)
         return await _dbContext.Stocks
-            .FirstOrDefaultAsync(s => s.Symbol.ToUpper() == symbol.ToUpper());
+            .FirstOrDefaultAsync(s => s.Symbol.ToUpper() == symbol.ToUpper() && s.UserId == userId);
     }
 
     public async Task AddAsync(Stock stock)
     {
-        // Adiciona a nova ação monitorada ao banco
         await _dbContext.Stocks.AddAsync(stock);
         await _dbContext.SaveChangesAsync();
     }
 
     public async Task UpdateAsync(Stock stock)
     {
-        // Atualiza o preço e a data da última consulta
         _dbContext.Stocks.Update(stock);
         await _dbContext.SaveChangesAsync();
     }
