@@ -4,6 +4,6 @@
     {
         public string? Symbol { get; set; }
         public decimal RegularMarketPrice { get; set; }
-        public long RegularMarketTime { get; set; }
+        public string? RegularMarketTime { get; set; }
     }
 }

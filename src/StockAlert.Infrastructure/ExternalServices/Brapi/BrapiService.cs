@@ -44,16 +44,24 @@ namespace StockAlert.Infrastructure.ExternalServices.Brapi
             var stockData = brapiResponse.Results.FirstOrDefault();
 
             // Verificando se stockData é nulo ou se suas propriedades essenciais são nulas
-            if (stockData == null || stockData.Symbol == null)
+            if (stockData == null || stockData.Symbol == null || stockData.RegularMarketPrice == 0 || stockData.RegularMarketTime == null)
             {
+                return null;
+            }
+
+            // <--- NOVA LÓGICA AQUI
+            DateTime lastRefreshDateTime;
+            if (!DateTime.TryParse(stockData.RegularMarketTime, out lastRefreshDateTime))
+            {
+                // Se a conversão da string de data falhar, podemos logar e retornar null
                 return null;
             }
 
             return new StockQuoteDto
             {
-                Symbol = stockData.Symbol, 
+                Symbol = stockData.Symbol,
                 Price = stockData.RegularMarketPrice,
-                LastRefresh = DateTimeOffset.FromUnixTimeSeconds(stockData.RegularMarketTime).DateTime
+                LastRefresh = lastRefreshDateTime 
             };
         }
     }
