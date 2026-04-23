@@ -26,15 +26,13 @@ public class RegisterStockUseCase
         var validationResult = await _validator.ValidateAsync(request);
         if (!validationResult.IsValid)
         {
-            var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            // USANDO O CAMINHO COMPLETO PARA A EXCEÇÃO:        
+            var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();    
             throw new StockAlert.Exception.ValidationException(errors);
         }
 
         var userId = _loggedUserAccessor.GetUserId();
         var symbol = request.Symbol.ToUpper();
 
-        // USANDO O MÉTODO ATUALIZADO NO REPOSITÓRIO:
         var existingStock = await _stockRepository.GetBySymbolAndUserIdAsync(symbol, userId);
 
         if (existingStock != null)
@@ -53,7 +51,6 @@ public class RegisterStockUseCase
             throw new StockAlert.Exception.ValidationException(new List<string> { $"Ação {symbol} não encontrada." });
         }
 
-        // USANDO O CAMINHO COMPLETO PARA A ENTIDADE:
         var newStock = new StockAlert.Domain.Entities.Stock
         {
             Symbol = symbol,

@@ -18,6 +18,20 @@ namespace StockAlert.Infrastructure.Repositories
             await _dbContext.SaveChangesAsync();
         }
 
+        public async Task<IEnumerable<AlertRule>> GetAllActiveAsync()
+        {
+            return await _dbContext.AlertRules
+                .Include(a => a.User) // Traz os dados do usuário junto
+                .Where(a => a.IsActive && a.DeletedAt == null)
+                .ToListAsync();
+        }
+
+        public async Task UpdateAsync(AlertRule alertRule)
+        {
+            _dbContext.AlertRules.Update(alertRule);
+            await _dbContext.SaveChangesAsync();
+        }
+
         public async Task DeleteAsync(Guid id)
         {
             var rule = await _dbContext.AlertRules.FindAsync(id);

@@ -21,6 +21,11 @@ public class StockRepository : IStockRepository
             .FirstOrDefaultAsync(s => s.Symbol.ToUpper() == symbol.ToUpper() && s.UserId == userId);
     }
 
+    public async Task<IEnumerable<Stock>> GetAllAsync()
+    {
+        return await _dbContext.Stocks.ToListAsync();
+    }
+
     public async Task AddAsync(Stock stock)
     {
         await _dbContext.Stocks.AddAsync(stock);
