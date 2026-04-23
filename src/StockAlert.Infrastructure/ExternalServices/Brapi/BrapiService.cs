@@ -48,8 +48,6 @@ namespace StockAlert.Infrastructure.ExternalServices.Brapi
             {
                 return null;
             }
-
-            // <--- NOVA LÓGICA AQUI
             DateTime lastRefreshDateTime;
             if (!DateTime.TryParse(stockData.RegularMarketTime, out lastRefreshDateTime))
             {

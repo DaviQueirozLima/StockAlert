@@ -2,12 +2,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using StockAlert.API.Filters;
+using StockAlert.API.Workers;
 using StockAlert.Application.Auth.UseCases;
 using StockAlert.Domain.Repositories;
 using StockAlert.Domain.Security;
 using StockAlert.Domain.Services;
 using StockAlert.Infrastructure.Data;
 using StockAlert.Infrastructure.ExternalServices.Brapi;
+using StockAlert.Infrastructure.ExternalServices.Email;
 using StockAlert.Infrastructure.Repositories;
 using StockAlert.Infrastructure.Security;
 using System.Text;
@@ -71,6 +73,13 @@ builder.Services.AddScoped<ILoggedUserAccessor, LoggedUserAccessor>();
 
 builder.Services.AddScoped<IBrapiService, BrapiService>();
 builder.Services.AddHttpClient<IBrapiService, BrapiService>();
+
+builder.Services.AddScoped<IEmailService, FakeEmailService>();
+
+builder.Services.AddHostedService<StockMonitorWorker>();
+
+builder.Services.AddScoped<INotificationHistoryRepository, NotificationHistoryRepository>();
+
 
 // JWT Authentication
 builder.Services.AddAuthentication("Bearer")
