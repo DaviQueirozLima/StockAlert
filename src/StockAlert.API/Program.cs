@@ -12,6 +12,7 @@ using StockAlert.Infrastructure.ExternalServices.Brapi;
 using StockAlert.Infrastructure.ExternalServices.Email;
 using StockAlert.Infrastructure.Repositories;
 using StockAlert.Infrastructure.Security;
+using StockAlert.Infrastructure.Services;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -74,7 +75,7 @@ builder.Services.AddScoped<ILoggedUserAccessor, LoggedUserAccessor>();
 builder.Services.AddScoped<IBrapiService, BrapiService>();
 builder.Services.AddHttpClient<IBrapiService, BrapiService>();
 
-builder.Services.AddScoped<IEmailService, FakeEmailService>();
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 
 builder.Services.AddHostedService<StockMonitorWorker>();
 
