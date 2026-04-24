@@ -54,10 +54,10 @@ public class StockMonitorWorker : BackgroundService
 
                                     // 5. Dispara a notificação (E-mail Fake no console)
                                     await emailService.SendAlertEmailAsync(
-                                        rule.User!.Email,
-                                        $"Stock Alert: {rule.StockSymbol} reached target!",
-                                        $"The stock {rule.StockSymbol} is now {quote.Price:C2}. Your target was {rule.TargetPrice:C2}."
-                                    );
+                                         rule.User!.Email,
+                                         $"Stock Alert: {rule.StockSymbol} reached target!",
+                                         $"The stock {rule.StockSymbol} is now {quote.Price:C2}. Your target was {rule.TargetPrice:C2}."
+                                     );
 
                                     // 6. Registra o histórico na tabela NotificationHistories para o PgAdmin
                                     var history = new StockAlert.Domain.Entities.NotificationHistory
