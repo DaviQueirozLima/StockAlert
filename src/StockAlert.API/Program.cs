@@ -7,6 +7,7 @@ using StockAlert.API.Filters;
 using StockAlert.API.Workers;
 using StockAlert.Application.AlertRule.UseCases;
 using StockAlert.Application.Auth.UseCases;
+using StockAlert.Application.Services;
 using StockAlert.Domain.Repositories;
 using StockAlert.Domain.Security;
 using StockAlert.Domain.Services;
@@ -89,6 +90,8 @@ builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddHostedService<StockMonitorWorker>();
 
 builder.Services.AddScoped<INotificationHistoryRepository, NotificationHistoryRepository>();
+
+builder.Services.AddScoped<IAlertConditionChecker, AlertConditionChecker>();
 
 
 // JWT Authentication

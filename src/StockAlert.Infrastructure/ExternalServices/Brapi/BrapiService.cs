@@ -17,11 +17,14 @@ public class BrapiService : IBrapiService
     {
         _httpClient = httpClient;
         _logger = logger;
-        _token = configuration["Brapi:Token"] ?? throw new ArgumentNullException("Brapi:Token is missing.");
+        _token = configuration["Brapi:Token"]
+            ?? throw new ArgumentNullException("Brapi:Token is missing.");
 
-        if (httpClient.BaseAddress == null)
+        if (_httpClient.BaseAddress == null)
         {
-            var baseUrl = configuration["Brapi:BaseUrl"] ?? throw new ArgumentNullException("Brapi:BaseUrl is missing.");
+            var baseUrl = configuration["Brapi:BaseUrl"]
+                ?? throw new ArgumentNullException("Brapi:BaseUrl is missing.");
+
             _httpClient.BaseAddress = new Uri(baseUrl);
         }
     }
@@ -30,27 +33,34 @@ public class BrapiService : IBrapiService
     {
         try
         {
-            // GetFromJsonAsync simplifica muito o código e já lida com o JSON internamente
-            var response = await _httpClient.GetFromJsonAsync<BrapiResponse>($"quote/{stockSymbol}?token={_token}");
+            var response = await _httpClient.GetFromJsonAsync<BrapiResponse>(
+                $"quote/{stockSymbol}?token={_token}"
+            );
+
             var stockData = response?.Results?.FirstOrDefault();
 
-            if (stockData == null || stockData.RegularMarketPrice == 0)
+            if (stockData is null || stockData.RegularMarketPrice <= 0)
             {
                 _logger.LogInformation("No valid data found for symbol: {Symbol}", stockSymbol);
                 return null;
             }
 
-            // Tentativa simplificada de parse de data
             if (!DateTime.TryParse(stockData.RegularMarketTime, out var lastRefresh))
             {
-                _logger.LogWarning("Could not parse market time for {Symbol}: {Time}", stockSymbol, stockData.RegularMarketTime);
-                return null;
+                _logger.LogWarning(
+                    "Could not parse market time for {Symbol}: {Time}",
+                    stockSymbol,
+                    stockData.RegularMarketTime
+                );
+
+                lastRefresh = DateTime.UtcNow;
             }
 
             return new StockQuoteDto
             {
-                Symbol = stockData.Symbol ?? "UNKNOWN",
+                Symbol = stockData.Symbol ?? stockSymbol.ToUpper(),
                 Price = stockData.RegularMarketPrice,
+                PreviousClose = stockData.RegularMarketPreviousClose,
                 LastRefresh = lastRefresh
             };
         }
