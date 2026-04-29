@@ -1,9 +1,7 @@
-﻿namespace StockAlert.Communication.Enums
+﻿namespace StockAlert.Communication.Enums;
+
+public enum NotificationChannel
 {
-    public enum NotificationChannel
-    {
-        Telegram = 0,
-        Whatsapp = 1,
-        Email = 2,
-    }
+    Email = 0,
+    Whatsapp = 1
 }

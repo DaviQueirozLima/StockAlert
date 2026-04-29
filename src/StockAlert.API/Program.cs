@@ -3,6 +3,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using StockAlert.API.Filters;
 using StockAlert.API.Workers;
+using StockAlert.Application.AlertRule.UseCases;
 using StockAlert.Application.Auth.UseCases;
 using StockAlert.Domain.Repositories;
 using StockAlert.Domain.Security;
@@ -69,7 +70,9 @@ builder.Services.AddScoped<FluentValidation.IValidator<StockAlert.Communication.
     .AlertRule.RegisterAlertRuleRequest>, StockAlert.Application.AlertRule.Validator.RegisterAlertRuleValidator>();
 builder.Services.AddScoped<StockAlert.Domain.Repositories.IAlertRuleRepository, StockAlert.Infrastructure.Repositories.AlertRuleRepository>();
 builder.Services.AddScoped<StockAlert.Application.AlertRule.UseCases.RegisterAlertRuleUseCase>();
-builder.Services.AddHttpContextAccessor(); 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<UpdateAlertRuleUseCase>();
+builder.Services.AddScoped<DeleteAlertRuleUseCase>();
 builder.Services.AddScoped<ILoggedUserAccessor, LoggedUserAccessor>();
 
 builder.Services.AddScoped<IBrapiService, BrapiService>();

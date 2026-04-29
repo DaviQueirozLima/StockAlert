@@ -8,6 +8,7 @@ namespace StockAlert.Domain.Repositories
         Task UpdateAsync(AlertRule alertRule);
         Task<IEnumerable<AlertRule>> GetByUserIdAsync(Guid userId);
         Task<IEnumerable<AlertRule>> GetAllActiveAsync();
+        Task<AlertRule?> GetByIdAsync(Guid id);
         Task DeleteAsync(Guid id); 
     }
 }

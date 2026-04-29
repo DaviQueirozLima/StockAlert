@@ -11,7 +11,7 @@ namespace StockAlert.Application.AlertRule.UseCases
     public class RegisterAlertRuleUseCase
     {
         private readonly IAlertRuleRepository _repository;
-        private readonly IStockRepository _stockRepository; // Repositório de Stock para validar a existência
+        private readonly IStockRepository _stockRepository; 
         private readonly IValidator<RegisterAlertRuleRequest> _validator;
         private readonly ILoggedUserAccessor _loggedUserAccessor;
 
