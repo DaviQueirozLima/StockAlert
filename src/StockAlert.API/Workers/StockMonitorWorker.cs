@@ -1,8 +1,5 @@
-﻿// Local: src/StockAlert.API/Workers/StockMonitorWorker.cs
-
-using StockAlert.Domain.Repositories;
+﻿using StockAlert.Domain.Repositories;
 using StockAlert.Domain.Services;
-using StockAlert.Domain.Enums;
 
 namespace StockAlert.API.Workers;
 
@@ -25,7 +22,7 @@ public class StockMonitorWorker : BackgroundService
         {
             try
             {
-                // Criamos um escopo para poder usar os repositórios (Scoped) dentro do Worker (Singleton)
+                // escopo para poder usar os repositórios (Scoped) dentro do Worker (Singleton)
                 using (var scope = _serviceProvider.CreateScope())
                 {
                     // Injeção de dependência manual dentro do escopo
@@ -90,7 +87,7 @@ public class StockMonitorWorker : BackgroundService
                 _logger.LogError(ex, "An error occurred in Stock Monitor Worker.");
             }
 
-            // Espera 10 segundos para o teste (Depois você pode voltar para 5 minutos)
+            // Espera 10 segundos para o teste 
             await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
         }
     }

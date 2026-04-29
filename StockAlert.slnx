@@ -10,5 +10,7 @@
     <Project Path="src/StockAlert.Exception/StockAlert.Exception.csproj" />
     <Project Path="src/StockAlert.Infrastructure/StockAlert.Infrastructure.csproj" />
   </Folder>
-  <Folder Name="/test/" />
+  <Folder Name="/test/">
+    <Project Path="test/StockAlert.Tests/StockAlert.Tests.csproj" Id="27324124-ad70-4b0f-93d2-a6d53468ce81" />
+  </Folder>
 </Solution>

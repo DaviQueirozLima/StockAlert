@@ -1,6 +1,4 @@
-﻿// Local: src/StockAlert.Application/Stock/UseCases/RegisterStockUseCase.cs
-
-namespace StockAlert.Application.Stock.UseCases;
+﻿namespace StockAlert.Application.Stock.UseCases;
 
 public class RegisterStockUseCase
 {

@@ -1,6 +1,5 @@
 ﻿using StockAlert.Domain.Repositories;
 using StockAlert.Domain.Security;
-using StockAlert.Exception;
 
 namespace StockAlert.Application.AlertRule.UseCases;
 
@@ -17,12 +16,12 @@ public class DeleteAlertRuleUseCase
 
     public async Task Execute(Guid ruleId)
     {
-        // Pegamos o ID do usuário logado usando o seu método real
+        // ID do usuário logado 
         var userId = _loggedUserAccessor.GetUserId();
 
         var rule = await _repository.GetByIdAsync(ruleId);
 
-        // Comparamos o ID da regra com o ID que seu Accessor retornou
+        //  ID da regra com o ID que seu Accessor retornou
         if (rule == null || rule.UserId != userId)
         {
             throw new StockAlert.Exception.NotFoundException("Alerta não encontrado.");

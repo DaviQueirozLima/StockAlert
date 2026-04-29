@@ -17,7 +17,7 @@ namespace StockAlert.Application.AlertRule.UseCases
             _loggedUserAccessor = loggedUserAccessor;
         }
 
-        public async Task Execute(Guid ruleId, RegisterAlertRuleRequest request) // Removemos o userId daqui
+        public async Task Execute(Guid ruleId, RegisterAlertRuleRequest request)
         {
             var userId = _loggedUserAccessor.GetUserId();
             var rule = await _repository.GetByIdAsync(ruleId);
@@ -27,7 +27,6 @@ namespace StockAlert.Application.AlertRule.UseCases
 
             rule.TargetPrice = request.TargetPrice ?? rule.TargetPrice;
 
-            // Use o nome correto do seu Enum de domínio (provavelmente AlertOperator)
             rule.Operator = (StockAlert.Domain.Enums.ComparisonOperator)request.Operator;
 
             rule.LastTriggeredAt = null;

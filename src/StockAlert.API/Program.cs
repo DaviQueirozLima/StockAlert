@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using Polly;
+using Polly.Extensions.Http;
 using StockAlert.API.Filters;
 using StockAlert.API.Workers;
 using StockAlert.Application.AlertRule.UseCases;
@@ -10,7 +12,6 @@ using StockAlert.Domain.Security;
 using StockAlert.Domain.Services;
 using StockAlert.Infrastructure.Data;
 using StockAlert.Infrastructure.ExternalServices.Brapi;
-using StockAlert.Infrastructure.ExternalServices.Email;
 using StockAlert.Infrastructure.Repositories;
 using StockAlert.Infrastructure.Security;
 using StockAlert.Infrastructure.Services;
@@ -51,6 +52,7 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
+
 // Database
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
@@ -75,8 +77,12 @@ builder.Services.AddScoped<UpdateAlertRuleUseCase>();
 builder.Services.AddScoped<DeleteAlertRuleUseCase>();
 builder.Services.AddScoped<ILoggedUserAccessor, LoggedUserAccessor>();
 
-builder.Services.AddScoped<IBrapiService, BrapiService>();
-builder.Services.AddHttpClient<IBrapiService, BrapiService>();
+builder.Services.AddHttpClient<IBrapiService, BrapiService>(client =>
+{
+})
+.AddPolicyHandler(HttpPolicyExtensions
+    .HandleTransientHttpError() 
+    .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)))); 
 
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 
@@ -113,7 +119,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-//  Ordem correta
 app.UseAuthentication();
 app.UseAuthorization();
 
