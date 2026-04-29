@@ -6,19 +6,22 @@ API back-end para monitoramento de ações da bolsa brasileira com disparo autom
 
 ## Sobre o projeto
 
-O StockAlert permite que usuários cadastrem ações da bolsa e definam regras de alerta baseadas em preço-alvo ou variação percentual. Um serviço em segundo plano monitora continuamente as cotações em tempo real via [Brapi](https://brapi.dev) e envia um e-mail automaticamente quando a condição configurada é atingida.
+O StockAlert permite que usuários cadastrem ações da bolsa e definam regras de alerta baseadas em preço-alvo ou variação percentual. Um serviço em segundo plano monitora continuamente as cotações em tempo real via Brapi e envia um e-mail automaticamente quando a condição configurada é atingida.
 
 > Observação: o sistema normaliza automaticamente os símbolos das ações brasileiras, convertendo entradas como `PETR4` para `PETR4.SA` ao consultar a Brapi.
 
-### Funcionalidades
+---
+
+## Funcionalidades
 
 * Autenticação via Google OAuth com geração de token JWT
 * Cadastro de ações monitoradas por usuário
 * Criação, edição e exclusão de regras de alerta
-* Monitoramento automático de cotações em segundo plano (BackgroundService)
-* Disparo de alertas por e-mail com mensagem detalhada, controle de cooldown e opção de disparo único
+* Monitoramento automático em segundo plano (BackgroundService)
+* Disparo de alertas por e-mail com mensagem detalhada
+* Controle de cooldown para evitar notificações repetidas
 * Histórico de notificações persistido no banco de dados
-* Tratamento de erros centralizado com respostas padronizadas
+* Tratamento de erros centralizado
 
 ---
 
@@ -29,87 +32,167 @@ O projeto segue os princípios da **Clean Architecture**, com responsabilidades 
 ```
 StockAlert/
 ├── src/
-│   ├── StockAlert.API            # Controllers, Workers, Filters, configuração da aplicação
-│   ├── StockAlert.Application    # Use Cases, Validators (regras de negócio)
-│   ├── StockAlert.Domain         # Entidades, Interfaces, Enums (núcleo da aplicação)
-│   ├── StockAlert.Infrastructure # EF Core, Repositórios, JWT, Brapi, Email
-│   ├── StockAlert.Communication  # DTOs de Request e Response
-│   └── StockAlert.Exception      # Exceções de domínio customizadas
+│   ├── StockAlert.API
+│   ├── StockAlert.Application
+│   ├── StockAlert.Domain
+│   ├── StockAlert.Infrastructure
+│   ├── StockAlert.Communication
+│   └── StockAlert.Exception
 └── test/
-    └── StockAlert.Tests          # Testes unitários (xUnit + Moq + FluentAssertions)
+    └── StockAlert.Tests
 ```
 
-A dependência sempre flui de fora para dentro: `API → Application → Domain ← Infrastructure`. O domínio não conhece nenhuma camada externa.
+---
+
+## 📌 Camadas do sistema
+
+### 🔹 API
+
+* Controllers (endpoints HTTP)
+* Workers (BackgroundService)
+* Filtros de exceção
+* Configuração da aplicação (DI, JWT, Swagger)
+
+👉 Porta de entrada do sistema
+
+---
+
+### 🔹 Application
+
+* Casos de uso (UseCases)
+* Validações (FluentValidation)
+* Orquestração da lógica de negócio
+
+👉 Onde a regra do sistema é executada
+
+---
+
+### 🔹 Domain
+
+* Entidades
+* Interfaces
+* Enums
+
+👉 Núcleo do sistema (independente)
+
+---
+
+### 🔹 Infrastructure
+
+* Banco de dados (EF Core)
+* Repositórios
+* Integrações externas (Brapi)
+* Envio de e-mail (SMTP)
+* Segurança (JWT)
+
+👉 Implementação de tudo que é externo
+
+---
+
+### 🔹 Communication
+
+* DTOs de Request
+* DTOs de Response
+
+👉 Transporte de dados
+
+---
+
+### 🔹 Exception
+
+* Exceções customizadas
+* Padronização de erros
+
+---
+
+## 🔄 Fluxo de dependência
+
+```text
+API → Application → Domain ← Infrastructure
+```
+
+### Regras de dependência entre camadas
+
+* **API**
+
+  * Pode acessar: Application, Infrastructure, Communication, Exception
+
+* **Application**
+
+  * Pode acessar: Domain, Communication, Exception
+
+* **Domain**
+
+  * Não acessa nenhuma camada
+
+* **Infrastructure**
+
+  * Pode acessar: Domain
+
+* **Communication**
+
+  * Não acessa nenhuma camada
+
+* **Exception**
+
+  * Não acessa nenhuma camada
+
+---
+
+👉 O domínio nunca depende de camadas externas, garantindo baixo acoplamento e alta manutenibilidade.
 
 ---
 
 ## Tecnologias utilizadas
 
-| Tecnologia                     | Uso                                                 |
-| ------------------------------ | --------------------------------------------------- |
-| .NET 10 / ASP.NET Core         | Framework principal                                 |
-| Entity Framework Core 10       | ORM e migrações de banco de dados                   |
-| PostgreSQL                     | Banco de dados relacional                           |
-| JWT Bearer                     | Autenticação e autorização                          |
-| Google.Apis.Auth               | Validação de tokens Google OAuth                    |
-| FluentValidation               | Validação de requests                               |
-| Polly                          | Resiliência com retry exponencial nas chamadas HTTP |
-| Brapi API                      | Cotações em tempo real da bolsa brasileira          |
-| SMTP (Gmail)                   | Envio de alertas por e-mail                         |
-| Docker                         | Containerização da aplicação                        |
-| xUnit + Moq + FluentAssertions | Testes unitários                                    |
-| Swagger / OpenAPI              | Documentação interativa da API                      |
-
----
-
-## Pré-requisitos
-
-* [.NET 10 SDK](https://dotnet.microsoft.com/download)
-* [PostgreSQL](https://www.postgresql.org/) (local ou via Docker)
-* [Docker](https://www.docker.com/) (opcional)
-* Conta no Google Cloud com um **Client ID** OAuth configurado
-* Token da [Brapi](https://brapi.dev) (gratuito)
-* Conta de e-mail Gmail com **senha de app** gerada
+* .NET 10 / ASP.NET Core
+* Entity Framework Core 10
+* PostgreSQL
+* JWT Bearer
+* Google OAuth
+* FluentValidation
+* Polly (retry automático)
+* Brapi API
+* SMTP (Gmail)
+* Docker
+* xUnit + Moq + FluentAssertions
+* Swagger
 
 ---
 
 ## Configuração
 
-### 1. Clone o repositório
-
-```bash
-git clone https://github.com/DaviQueirozLima/StockAlert.git
-cd StockAlert
-git checkout refactor/final-cleanup-and-adjustments
-```
-
-### 2. Configure o `appsettings.json`
-
-Edite o arquivo `src/StockAlert.API/appsettings.json` com suas credenciais:
+### appsettings.json
 
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=StockAlert;Username=seu_usuario;Password=sua_senha"
+    "DefaultConnection": "Host=YOUR_HOST;Port=5432;Database=StockAlert;Username=YOUR_USERNAME;Password=YOUR_PASSWORD"
   },
   "Settings": {
     "Jwt": {
-      "SigningKey": "uma_chave_secreta_longa_e_aleatoria_aqui",
+      "SigningKey": "YOUR_SECURE_RANDOM_LONG_KEY_HERE",
       "ExpirationInMinutes": 1440
     }
   },
   "Google": {
-    "ClientId": "seu_client_id.apps.googleusercontent.com"
+    "ClientId": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
   },
   "Brapi": {
     "BaseUrl": "https://brapi.dev/api/",
-    "Token": "seu_token_brapi"
+    "Token": "YOUR_BRAPI_API_TOKEN"
   },
   "EmailSettings": {
     "Host": "smtp.gmail.com",
     "Port": 587,
-    "UserName": "seu_email@gmail.com",
-    "Password": "sua_senha_de_app_gmail"
+    "UserName": "YOUR_EMAIL_ADDRESS@gmail.com",
+    "Password": "YOUR_APP_SPECIFIC_PASSWORD"
   },
   "WorkerSettings": {
     "IntervalSeconds": 10
@@ -117,77 +200,35 @@ Edite o arquivo `src/StockAlert.API/appsettings.json` com suas credenciais:
 }
 ```
 
-> Define o intervalo (em segundos) entre cada execução do monitoramento em segundo plano.
+---
 
-### 3. Execute as migrações
-
-```bash
-cd src/StockAlert.API
-dotnet ef database update --project ../StockAlert.Infrastructure
-```
-
-### 4. Execute a aplicação
+## Execução
 
 ```bash
 dotnet run --project src/StockAlert.API
 ```
 
-A API estará disponível em `https://localhost:7000` e o Swagger em `https://localhost:7000/swagger`.
+Swagger disponível em:
 
----
-
-## Executando com Docker
-
-```bash
-docker build -t stockalert -f src/StockAlert.API/Dockerfile .
-docker run -p 8080:8080 --env-file .env stockalert
 ```
-
----
-
-## Endpoints
-
-Após iniciar a aplicação, acesse o **Swagger UI** para explorar e testar todos os endpoints com autenticação JWT integrada.
-
-| Método | Rota                   | Descrição                            | Auth |
-| ------ | ---------------------- | ------------------------------------ | ---- |
-| POST   | `/api/auth/google`     | Login com token Google, retorna JWT  | Não  |
-| POST   | `/api/stocks/register` | Cadastra uma ação para monitoramento | Sim  |
-| POST   | `/api/alertrules`      | Cria uma regra de alerta             | Sim  |
-| PUT    | `/api/alertrules/{id}` | Atualiza uma regra de alerta         | Sim  |
-| DELETE | `/api/alertrules/{id}` | Remove uma regra de alerta           | Sim  |
+https://localhost:7100/swagger
+```
 
 ---
 
 ## Como funciona o monitoramento
 
-O `StockMonitorWorker` é um `BackgroundService` que executa continuamente em segundo plano:
+O sistema utiliza um `BackgroundService` que:
 
-1. Busca todas as regras de alerta ativas no banco
-2. Para cada regra, consulta o preço atual da ação na API da Brapi
-3. Avalia a condição configurada (ex: preço > alvo)
-4. Verifica o cooldown — evita disparar o mesmo alerta repetidamente em curto intervalo (padrão: 15 minutos)
-5. Se a condição foi atingida e o cooldown passou, envia o e-mail de alerta
-6. Registra o evento no histórico de notificações (`NotificationHistories`)
-7. Se a regra for `NotifyOnce`, desativa-a automaticamente após o primeiro disparo
+1. Busca regras ativas
+2. Consulta preço na Brapi
+3. Verifica condição
+4. Aplica cooldown
+5. Envia e-mail
+6. Salva histórico
+7. Atualiza regra
 
-O intervalo entre cada ciclo pode ser configurado no `appsettings.json` através de `WorkerSettings.IntervalSeconds`.
-
----
-
-## Modo de teste local (FakeEmailService)
-
-Para testar o funcionamento do worker sem configurar um servidor SMTP real, o projeto inclui um `FakeEmailService`. Em vez de enviar o e-mail, ele imprime o conteúdo completo no console da aplicação.
-
-Para ativá-lo, basta trocar o registro no `Program.cs`:
-
-```csharp
-// Produção (SMTP real):
-builder.Services.AddScoped<IEmailService, SmtpEmailService>();
-
-// Desenvolvimento (sem SMTP, saída no console):
-builder.Services.AddScoped<IEmailService, FakeEmailService>();
-```
+O intervalo de execução é configurável via `WorkerSettings.IntervalSeconds`.
 
 ---
 
@@ -197,21 +238,18 @@ builder.Services.AddScoped<IEmailService, FakeEmailService>();
 dotnet test
 ```
 
-Os testes cobrem o `RegisterAlertRuleUseCase` e o `RegisterAlertRuleValidator`, validando cenários de sucesso e de falha com dados inválidos ou ação não cadastrada.
-
 ---
 
 ## Melhorias futuras
 
-* Envio de relatórios em PDF com histórico de alertas
-* Suporte a notificações via WhatsApp
-* Dashboard com gráficos de ações
-* Notificações em tempo real via WebSocket
+* Relatórios em PDF
+* Integração com WhatsApp
+* Dashboard com gráficos
+* Notificações em tempo real
 
 ---
 
 ## Autor
 
-**Davi Queiroz Lima**
-Curso Superior de Tecnologia em Análise e Desenvolvimento de Sistemas
-Centro Universitário UniFacema — Campus Caxias/MA
+Davi Queiroz Lima
+ADS — UniFacema
