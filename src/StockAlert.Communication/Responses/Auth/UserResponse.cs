@@ -6,8 +6,5 @@
         public string Name { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public bool NotifyByEmail { get; set; } 
-        public bool NotifyByTelegram { get; set; }
-        public bool IsTelegramVerified { get; set; }
-
     }
 }
