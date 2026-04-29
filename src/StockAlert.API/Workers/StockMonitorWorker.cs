@@ -1,4 +1,6 @@
-﻿using StockAlert.Domain.Repositories;
+﻿using Microsoft.Extensions.Options;
+using StockAlert.API.Configurations;
+using StockAlert.Domain.Repositories;
 using StockAlert.Domain.Services;
 
 namespace StockAlert.API.Workers;
@@ -7,11 +9,16 @@ public class StockMonitorWorker : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<StockMonitorWorker> _logger;
+    private readonly WorkerSettings _settings;
 
-    public StockMonitorWorker(IServiceProvider serviceProvider, ILogger<StockMonitorWorker> logger)
+    public StockMonitorWorker(
+     IServiceProvider serviceProvider,
+     ILogger<StockMonitorWorker> logger,
+     IOptions<WorkerSettings> options)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
+        _settings = options.Value;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -90,7 +97,7 @@ public class StockMonitorWorker : BackgroundService
                 _logger.LogError(ex, "An error occurred in Stock Monitor Worker.");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+            await Task.Delay(TimeSpan.FromSeconds(_settings.IntervalSeconds), stoppingToken);
         }
     }
 

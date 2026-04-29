@@ -3,6 +3,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Polly;
 using Polly.Extensions.Http;
+using StockAlert.API.Configurations;
 using StockAlert.API.Filters;
 using StockAlert.API.Workers;
 using StockAlert.Application.AlertRule.UseCases;
@@ -20,17 +21,21 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Controllers + ExceptionFilter
+#region Controllers & Filters
+
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<ExceptionFilter>();
 });
 
-// Swagger
+#endregion
+
+#region Swagger
+
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen(options =>
 {
-    // 1. Define o esquema de segurança
     var securityScheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -41,10 +46,8 @@ builder.Services.AddSwaggerGen(options =>
         BearerFormat = "JWT"
     };
 
-    // 2. Registra a definição com o ID "Bearer"
     options.AddSecurityDefinition("Bearer", securityScheme);
 
-    // 3. Aplica a segurança globalmente (Sintaxe Funcional do Swashbuckle 10)
     options.AddSecurityRequirement(doc => new OpenApiSecurityRequirement
     {
         {
@@ -54,47 +57,84 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// Database
+#endregion
+
+#region Database
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
-// DI
+#endregion
+
+#region DI - Repositories
+
 builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<ITokenService, JwtTokenGenerator>();
-builder.Services.AddScoped<LoginWithGoogleUseCase>();
+builder.Services.AddScoped<IStockRepository, StockRepository>();
+builder.Services.AddScoped<IAlertRuleRepository, AlertRuleRepository>();
+builder.Services.AddScoped<INotificationHistoryRepository, NotificationHistoryRepository>();
 
-builder.Services.AddScoped<FluentValidation.IValidator<StockAlert.Communication.Requests
-    .Stock.RegisterStockRequest>, StockAlert.Application.Stock.Validators.RegisterStockValidator>();
-builder.Services.AddScoped<StockAlert.Application.Stock.UseCases.RegisterStockUseCase>();
-builder.Services.AddScoped<StockAlert.Domain.Repositories.IStockRepository, StockAlert.Infrastructure.Repositories.StockRepository>();
+#endregion
 
-builder.Services.AddScoped<FluentValidation.IValidator<StockAlert.Communication.Requests
-    .AlertRule.RegisterAlertRuleRequest>, StockAlert.Application.AlertRule.Validator.RegisterAlertRuleValidator>();
-builder.Services.AddScoped<StockAlert.Domain.Repositories.IAlertRuleRepository, StockAlert.Infrastructure.Repositories.AlertRuleRepository>();
-builder.Services.AddScoped<StockAlert.Application.AlertRule.UseCases.RegisterAlertRuleUseCase>();
+#region DI - Security
+
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<UpdateAlertRuleUseCase>();
-builder.Services.AddScoped<DeleteAlertRuleUseCase>();
+builder.Services.AddScoped<ITokenService, JwtTokenGenerator>();
 builder.Services.AddScoped<ILoggedUserAccessor, LoggedUserAccessor>();
 
-builder.Services.AddHttpClient<IBrapiService, BrapiService>(client =>
-{
-})
-.AddPolicyHandler(HttpPolicyExtensions
-    .HandleTransientHttpError() 
-    .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)))); 
+#endregion
 
-builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+#region DI - UseCases
 
-builder.Services.AddHostedService<StockMonitorWorker>();
+builder.Services.AddScoped<LoginWithGoogleUseCase>();
+builder.Services.AddScoped<StockAlert.Application.Stock.UseCases.RegisterStockUseCase>();
+builder.Services.AddScoped<RegisterAlertRuleUseCase>();
+builder.Services.AddScoped<UpdateAlertRuleUseCase>();
+builder.Services.AddScoped<DeleteAlertRuleUseCase>();
 
-builder.Services.AddScoped<INotificationHistoryRepository, NotificationHistoryRepository>();
+#endregion
+
+#region DI - Validators
+
+builder.Services.AddScoped<
+    FluentValidation.IValidator<StockAlert.Communication.Requests.Stock.RegisterStockRequest>,
+    StockAlert.Application.Stock.Validators.RegisterStockValidator>();
+
+builder.Services.AddScoped<
+    FluentValidation.IValidator<StockAlert.Communication.Requests.AlertRule.RegisterAlertRuleRequest>,
+    StockAlert.Application.AlertRule.Validator.RegisterAlertRuleValidator>();
+
+#endregion
+
+#region DI - Application Services
 
 builder.Services.AddScoped<IAlertConditionChecker, AlertConditionChecker>();
 
+#endregion
 
-// JWT Authentication
+#region DI - External Services
+
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+
+builder.Services.AddHttpClient<IBrapiService, BrapiService>()
+    .AddPolicyHandler(HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))));
+
+#endregion
+
+#region Worker Configuration
+
+builder.Services.Configure<WorkerSettings>(
+    builder.Configuration.GetSection("WorkerSettings")
+);
+
+builder.Services.AddHostedService<StockMonitorWorker>();
+
+#endregion
+
+#region Authentication & Authorization
+
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
@@ -112,7 +152,11 @@ builder.Services.AddAuthentication("Bearer")
 
 builder.Services.AddAuthorization();
 
+#endregion
+
 var app = builder.Build();
+
+#region Middleware
 
 if (app.Environment.IsDevelopment())
 {
@@ -126,5 +170,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+#endregion
 
 app.Run();
