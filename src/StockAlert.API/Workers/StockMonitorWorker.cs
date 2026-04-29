@@ -12,9 +12,9 @@ public class StockMonitorWorker : BackgroundService
     private readonly WorkerSettings _settings;
 
     public StockMonitorWorker(
-     IServiceProvider serviceProvider,
-     ILogger<StockMonitorWorker> logger,
-     IOptions<WorkerSettings> options)
+        IServiceProvider serviceProvider,
+        ILogger<StockMonitorWorker> logger,
+        IOptions<WorkerSettings> options)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
@@ -46,13 +46,7 @@ public class StockMonitorWorker : BackgroundService
                     if (quote is null)
                         continue;
 
-                    var conditionMet = conditionChecker.IsConditionMet(
-                        quote.Price,
-                        quote.PreviousClose,
-                        rule
-                    );
-
-                    if (!conditionMet)
+                    if (!conditionChecker.IsConditionMet(quote.Price, quote.PreviousClose, rule))
                         continue;
 
                     if (!CanSendNotification(rule))
@@ -64,10 +58,14 @@ public class StockMonitorWorker : BackgroundService
                         rule.User?.Email
                     );
 
+                    var subject = $"Alerta de ação: {rule.StockSymbol} atingiu sua condição";
+
+                    var message = BuildEmailMessage(rule, quote.Price);
+
                     await emailService.SendAlertEmailAsync(
                         rule.User!.Email,
-                        $"Stock Alert: {rule.StockSymbol} reached target!",
-                        $"The stock {rule.StockSymbol} is now {quote.Price:C2}."
+                        subject,
+                        message
                     );
 
                     var history = new StockAlert.Domain.Entities.NotificationHistory
@@ -78,7 +76,7 @@ public class StockMonitorWorker : BackgroundService
                         Channel = StockAlert.Domain.Enums.NotificationChannel.Email,
                         Success = true,
                         Status = "Sent",
-                        Message = $"Stock {rule.StockSymbol} reached {quote.Price:C2}",
+                        Message = message,
                         Recipient = rule.User!.Email
                     };
 
@@ -99,6 +97,27 @@ public class StockMonitorWorker : BackgroundService
 
             await Task.Delay(TimeSpan.FromSeconds(_settings.IntervalSeconds), stoppingToken);
         }
+    }
+
+    private static string BuildEmailMessage(StockAlert.Domain.Entities.AlertRule rule, decimal currentPrice)
+    {
+        var targetInfo = rule.TargetPrice.HasValue
+            ? $"Preço alvo: R$ {rule.TargetPrice.Value:F2}"
+            : $"Variação alvo: {rule.PercentageChange:F2}%";
+
+        return $"""
+        Olá, {rule.User!.Name}!
+
+        A ação {rule.StockSymbol} atingiu a condição configurada no seu alerta.
+
+        Preço atual: R$ {currentPrice:F2}
+        {targetInfo}
+        Condição: {rule.Operator}
+
+        Data do alerta: {DateTime.Now:dd/MM/yyyy HH:mm}
+
+        Este alerta foi enviado automaticamente pelo StockAlert.
+        """;
     }
 
     private static bool CanSendNotification(StockAlert.Domain.Entities.AlertRule rule)

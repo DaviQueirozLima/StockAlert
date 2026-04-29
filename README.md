@@ -8,15 +8,17 @@ API back-end para monitoramento de ações da bolsa brasileira com disparo autom
 
 O StockAlert permite que usuários cadastrem ações da bolsa e definam regras de alerta baseadas em preço-alvo ou variação percentual. Um serviço em segundo plano monitora continuamente as cotações em tempo real via [Brapi](https://brapi.dev) e envia um e-mail automaticamente quando a condição configurada é atingida.
 
+> Observação: o sistema normaliza automaticamente os símbolos das ações brasileiras, convertendo entradas como `PETR4` para `PETR4.SA` ao consultar a Brapi.
+
 ### Funcionalidades
 
-- Autenticação via Google OAuth com geração de token JWT
-- Cadastro de ações monitoradas por usuário
-- Criação, edição e exclusão de regras de alerta
-- Monitoramento automático de cotações em segundo plano (BackgroundService)
-- Disparo de alertas por e-mail com controle de cooldown e opção de disparo único
-- Histórico de notificações persistido no banco de dados
-- Tratamento de erros centralizado com respostas padronizadas
+* Autenticação via Google OAuth com geração de token JWT
+* Cadastro de ações monitoradas por usuário
+* Criação, edição e exclusão de regras de alerta
+* Monitoramento automático de cotações em segundo plano (BackgroundService)
+* Disparo de alertas por e-mail com mensagem detalhada, controle de cooldown e opção de disparo único
+* Histórico de notificações persistido no banco de dados
+* Tratamento de erros centralizado com respostas padronizadas
 
 ---
 
@@ -43,31 +45,31 @@ A dependência sempre flui de fora para dentro: `API → Application → Domain 
 
 ## Tecnologias utilizadas
 
-| Tecnologia | Uso |
-|---|---|
-| .NET 10 / ASP.NET Core | Framework principal |
-| Entity Framework Core 10 | ORM e migrações de banco de dados |
-| PostgreSQL | Banco de dados relacional |
-| JWT Bearer | Autenticação e autorização |
-| Google.Apis.Auth | Validação de tokens Google OAuth |
-| FluentValidation | Validação de requests |
-| Polly | Resiliência com retry exponencial nas chamadas HTTP |
-| Brapi API | Cotações em tempo real da bolsa brasileira |
-| SMTP (Gmail) | Envio de alertas por e-mail |
-| Docker | Containerização da aplicação |
-| xUnit + Moq + FluentAssertions | Testes unitários |
-| Swagger / OpenAPI | Documentação interativa da API |
+| Tecnologia                     | Uso                                                 |
+| ------------------------------ | --------------------------------------------------- |
+| .NET 10 / ASP.NET Core         | Framework principal                                 |
+| Entity Framework Core 10       | ORM e migrações de banco de dados                   |
+| PostgreSQL                     | Banco de dados relacional                           |
+| JWT Bearer                     | Autenticação e autorização                          |
+| Google.Apis.Auth               | Validação de tokens Google OAuth                    |
+| FluentValidation               | Validação de requests                               |
+| Polly                          | Resiliência com retry exponencial nas chamadas HTTP |
+| Brapi API                      | Cotações em tempo real da bolsa brasileira          |
+| SMTP (Gmail)                   | Envio de alertas por e-mail                         |
+| Docker                         | Containerização da aplicação                        |
+| xUnit + Moq + FluentAssertions | Testes unitários                                    |
+| Swagger / OpenAPI              | Documentação interativa da API                      |
 
 ---
 
 ## Pré-requisitos
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- [PostgreSQL](https://www.postgresql.org/) (local ou via Docker)
-- [Docker](https://www.docker.com/) (opcional)
-- Conta no Google Cloud com um **Client ID** OAuth configurado
-- Token da [Brapi](https://brapi.dev) (gratuito)
-- Conta de e-mail Gmail com **senha de app** gerada
+* [.NET 10 SDK](https://dotnet.microsoft.com/download)
+* [PostgreSQL](https://www.postgresql.org/) (local ou via Docker)
+* [Docker](https://www.docker.com/) (opcional)
+* Conta no Google Cloud com um **Client ID** OAuth configurado
+* Token da [Brapi](https://brapi.dev) (gratuito)
+* Conta de e-mail Gmail com **senha de app** gerada
 
 ---
 
@@ -100,7 +102,7 @@ Edite o arquivo `src/StockAlert.API/appsettings.json` com suas credenciais:
     "ClientId": "seu_client_id.apps.googleusercontent.com"
   },
   "Brapi": {
-    "BaseUrl": "https://brapi.dev/api",
+    "BaseUrl": "https://brapi.dev/api/",
     "Token": "seu_token_brapi"
   },
   "EmailSettings": {
@@ -108,11 +110,14 @@ Edite o arquivo `src/StockAlert.API/appsettings.json` com suas credenciais:
     "Port": 587,
     "UserName": "seu_email@gmail.com",
     "Password": "sua_senha_de_app_gmail"
+  },
+  "WorkerSettings": {
+    "IntervalSeconds": 10
   }
 }
 ```
 
-> **Dica:** Para gerar a senha de app do Gmail, acesse Conta Google → Segurança → Verificação em duas etapas → Senhas de app.
+> Define o intervalo (em segundos) entre cada execução do monitoramento em segundo plano.
 
 ### 3. Execute as migrações
 
@@ -144,13 +149,13 @@ docker run -p 8080:8080 --env-file .env stockalert
 
 Após iniciar a aplicação, acesse o **Swagger UI** para explorar e testar todos os endpoints com autenticação JWT integrada.
 
-| Método | Rota | Descrição | Auth |
-|---|---|---|---|
-| POST | `/api/auth/google` | Login com token Google, retorna JWT | Não |
-| POST | `/api/stocks/register` | Cadastra uma ação para monitoramento | Sim |
-| POST | `/api/alertrules` | Cria uma regra de alerta | Sim |
-| PUT | `/api/alertrules/{id}` | Atualiza uma regra de alerta | Sim |
-| DELETE | `/api/alertrules/{id}` | Remove uma regra de alerta | Sim |
+| Método | Rota                   | Descrição                            | Auth |
+| ------ | ---------------------- | ------------------------------------ | ---- |
+| POST   | `/api/auth/google`     | Login com token Google, retorna JWT  | Não  |
+| POST   | `/api/stocks/register` | Cadastra uma ação para monitoramento | Sim  |
+| POST   | `/api/alertrules`      | Cria uma regra de alerta             | Sim  |
+| PUT    | `/api/alertrules/{id}` | Atualiza uma regra de alerta         | Sim  |
+| DELETE | `/api/alertrules/{id}` | Remove uma regra de alerta           | Sim  |
 
 ---
 
@@ -166,7 +171,7 @@ O `StockMonitorWorker` é um `BackgroundService` que executa continuamente em se
 6. Registra o evento no histórico de notificações (`NotificationHistories`)
 7. Se a regra for `NotifyOnce`, desativa-a automaticamente após o primeiro disparo
 
-O worker aguarda **10 segundos** entre cada ciclo de verificação.
+O intervalo entre cada ciclo pode ser configurado no `appsettings.json` através de `WorkerSettings.IntervalSeconds`.
 
 ---
 
@@ -196,8 +201,17 @@ Os testes cobrem o `RegisterAlertRuleUseCase` e o `RegisterAlertRuleValidator`, 
 
 ---
 
+## Melhorias futuras
+
+* Envio de relatórios em PDF com histórico de alertas
+* Suporte a notificações via WhatsApp
+* Dashboard com gráficos de ações
+* Notificações em tempo real via WebSocket
+
+---
+
 ## Autor
 
-**Davi Queiroz Lima**  
-Curso Superior de Tecnologia em Análise e Desenvolvimento de Sistemas  
+**Davi Queiroz Lima**
+Curso Superior de Tecnologia em Análise e Desenvolvimento de Sistemas
 Centro Universitário UniFacema — Campus Caxias/MA

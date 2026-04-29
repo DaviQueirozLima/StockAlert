@@ -33,15 +33,21 @@ public class BrapiService : IBrapiService
     {
         try
         {
+            // Normaliza o símbolo (ex: PETR4 -> PETR4.SA)
+            var normalizedSymbol = stockSymbol.ToUpper();
+
+            if (!normalizedSymbol.EndsWith(".SA"))
+                normalizedSymbol += ".SA";
+
             var response = await _httpClient.GetFromJsonAsync<BrapiResponse>(
-                $"quote/{stockSymbol}?token={_token}"
-            );
+                    $"quote/{normalizedSymbol}?token={_token}"
+                                );
 
             var stockData = response?.Results?.FirstOrDefault();
 
             if (stockData is null || stockData.RegularMarketPrice <= 0)
             {
-                _logger.LogInformation("No valid data found for symbol: {Symbol}", stockSymbol);
+                _logger.LogInformation("No valid data found for symbol: {Symbol}", normalizedSymbol);
                 return null;
             }
 
@@ -49,7 +55,7 @@ public class BrapiService : IBrapiService
             {
                 _logger.LogWarning(
                     "Could not parse market time for {Symbol}: {Time}",
-                    stockSymbol,
+                    normalizedSymbol,
                     stockData.RegularMarketTime
                 );
 
@@ -58,7 +64,7 @@ public class BrapiService : IBrapiService
 
             return new StockQuoteDto
             {
-                Symbol = stockData.Symbol ?? stockSymbol.ToUpper(),
+                Symbol = stockData.Symbol ?? normalizedSymbol,
                 Price = stockData.RegularMarketPrice,
                 PreviousClose = stockData.RegularMarketPreviousClose,
                 LastRefresh = lastRefresh
