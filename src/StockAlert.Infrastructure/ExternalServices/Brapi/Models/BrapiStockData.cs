@@ -4,6 +4,7 @@
     {
         public string? Symbol { get; set; }
         public decimal RegularMarketPrice { get; set; }
+        public decimal? RegularMarketPreviousClose { get; set; }
         public string? RegularMarketTime { get; set; }
     }
 }

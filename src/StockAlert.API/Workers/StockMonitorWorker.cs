@@ -1,8 +1,7 @@
-﻿// Local: src/StockAlert.API/Workers/StockMonitorWorker.cs
-
+﻿using Microsoft.Extensions.Options;
+using StockAlert.API.Configurations;
 using StockAlert.Domain.Repositories;
 using StockAlert.Domain.Services;
-using StockAlert.Domain.Enums;
 
 namespace StockAlert.API.Workers;
 
@@ -10,11 +9,16 @@ public class StockMonitorWorker : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<StockMonitorWorker> _logger;
+    private readonly WorkerSettings _settings;
 
-    public StockMonitorWorker(IServiceProvider serviceProvider, ILogger<StockMonitorWorker> logger)
+    public StockMonitorWorker(
+        IServiceProvider serviceProvider,
+        ILogger<StockMonitorWorker> logger,
+        IOptions<WorkerSettings> options)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
+        _settings = options.Value;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -25,64 +29,65 @@ public class StockMonitorWorker : BackgroundService
         {
             try
             {
-                // Criamos um escopo para poder usar os repositórios (Scoped) dentro do Worker (Singleton)
-                using (var scope = _serviceProvider.CreateScope())
+                using var scope = _serviceProvider.CreateScope();
+
+                var alertRepo = scope.ServiceProvider.GetRequiredService<IAlertRuleRepository>();
+                var brapiService = scope.ServiceProvider.GetRequiredService<IBrapiService>();
+                var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+                var historyRepo = scope.ServiceProvider.GetRequiredService<INotificationHistoryRepository>();
+                var conditionChecker = scope.ServiceProvider.GetRequiredService<IAlertConditionChecker>();
+
+                var activeRules = await alertRepo.GetAllActiveAsync();
+
+                foreach (var rule in activeRules)
                 {
-                    // Injeção de dependência manual dentro do escopo
-                    var alertRepo = scope.ServiceProvider.GetRequiredService<IAlertRuleRepository>();
-                    var brapiService = scope.ServiceProvider.GetRequiredService<IBrapiService>();
-                    var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
-                    var historyRepo = scope.ServiceProvider.GetRequiredService<INotificationHistoryRepository>();
+                    var quote = await brapiService.GetStockQuoteAsync(rule.StockSymbol);
 
-                    // 1. Busca todas as regras de alerta ativas (com os dados do usuário inclusos)
-                    var activeRules = await alertRepo.GetAllActiveAsync();
+                    if (quote is null)
+                        continue;
 
-                    foreach (var rule in activeRules)
+                    if (!conditionChecker.IsConditionMet(quote.Price, quote.PreviousClose, rule))
+                        continue;
+
+                    if (!CanSendNotification(rule))
+                        continue;
+
+                    _logger.LogInformation(
+                        "Condition met for {StockSymbol} (User: {Email})",
+                        rule.StockSymbol,
+                        rule.User?.Email
+                    );
+
+                    var subject = $"Alerta de ação: {rule.StockSymbol} atingiu sua condição";
+
+                    var message = BuildEmailMessage(rule, quote.Price);
+
+                    await emailService.SendAlertEmailAsync(
+                        rule.User!.Email,
+                        subject,
+                        message
+                    );
+
+                    var history = new StockAlert.Domain.Entities.NotificationHistory
                     {
-                        // 2. Busca o preço atual na API da Brapi
-                        var quote = await brapiService.GetStockQuoteAsync(rule.StockSymbol);
+                        AlertRuleId = rule.Id,
+                        UserId = rule.UserId,
+                        SentAt = DateTime.UtcNow,
+                        Channel = StockAlert.Domain.Enums.NotificationChannel.Email,
+                        Success = true,
+                        Status = "Sent",
+                        Message = message,
+                        Recipient = rule.User!.Email
+                    };
 
-                        if (quote != null)
-                        {
-                            // 3. Verifica se a condição da regra foi atingida (Ex: Preço > Alvo)
-                            if (CheckCondition(quote.Price, rule))
-                            {
-                                // 4. Verifica o Cooldown (Evita mandar e-mail repetido em curto intervalo)
-                                if (CanSendNotification(rule))
-                                {
-                                    _logger.LogInformation($"Condition met for {rule.StockSymbol} (User: {rule.User?.Email})");
+                    await historyRepo.AddAsync(history);
 
-                                    // 5. Dispara a notificação (E-mail Fake no console)
-                                    await emailService.SendAlertEmailAsync(
-                                         rule.User!.Email,
-                                         $"Stock Alert: {rule.StockSymbol} reached target!",
-                                         $"The stock {rule.StockSymbol} is now {quote.Price:C2}. Your target was {rule.TargetPrice:C2}."
-                                     );
+                    rule.LastTriggeredAt = DateTime.UtcNow;
 
-                                    // 6. Registra o histórico na tabela NotificationHistories para o PgAdmin
-                                    var history = new StockAlert.Domain.Entities.NotificationHistory
-                                    {
-                                        AlertRuleId = rule.Id,
-                                        UserId = rule.UserId,
-                                        SentAt = DateTime.UtcNow,
-                                        Channel = StockAlert.Domain.Enums.NotificationChannel.Email,
-                                        Success = true,
-                                        Status = "Sent",
-                                        Message = $"Stock {rule.StockSymbol} reached {quote.Price:C2}",
-                                        Recipient = rule.User!.Email
-                                    };
+                    if (rule.NotifyOnce)
+                        rule.IsActive = false;
 
-                                    await historyRepo.AddAsync(history);
-
-                                    // 7. Atualiza o banco com o horário do disparo e desativa se for NotifyOnce
-                                    rule.LastTriggeredAt = DateTime.UtcNow;
-                                    if (rule.NotifyOnce) rule.IsActive = false;
-
-                                    await alertRepo.UpdateAsync(rule);
-                                }
-                            }
-                        }
-                    }
+                    await alertRepo.UpdateAsync(rule);
                 }
             }
             catch (System.Exception ex)
@@ -90,32 +95,38 @@ public class StockMonitorWorker : BackgroundService
                 _logger.LogError(ex, "An error occurred in Stock Monitor Worker.");
             }
 
-            // Espera 10 segundos para o teste (Depois você pode voltar para 5 minutos)
-            await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+            await Task.Delay(TimeSpan.FromSeconds(_settings.IntervalSeconds), stoppingToken);
         }
     }
 
-    private bool CheckCondition(decimal currentPrice, StockAlert.Domain.Entities.AlertRule rule)
+    private static string BuildEmailMessage(StockAlert.Domain.Entities.AlertRule rule, decimal currentPrice)
     {
-        if (rule.TargetPrice == null) return false;
+        var targetInfo = rule.TargetPrice.HasValue
+            ? $"Preço alvo: R$ {rule.TargetPrice.Value:F2}"
+            : $"Variação alvo: {rule.PercentageChange:F2}%";
 
-        return rule.Operator switch
-        {
-            StockAlert.Domain.Enums.ComparisonOperator.GreaterThan => currentPrice > rule.TargetPrice,
-            StockAlert.Domain.Enums.ComparisonOperator.LessThan => currentPrice < rule.TargetPrice,
-            StockAlert.Domain.Enums.ComparisonOperator.Equal => currentPrice == rule.TargetPrice,
-            StockAlert.Domain.Enums.ComparisonOperator.GreaterThanOrEqual => currentPrice >= rule.TargetPrice,
-            StockAlert.Domain.Enums.ComparisonOperator.LessThanOrEqual => currentPrice <= rule.TargetPrice,
-            _ => false
-        };
+        return $"""
+        Olá, {rule.User!.Name}!
+
+        A ação {rule.StockSymbol} atingiu a condição configurada no seu alerta.
+
+        Preço atual: R$ {currentPrice:F2}
+        {targetInfo}
+        Condição: {rule.Operator}
+
+        Data do alerta: {DateTime.Now:dd/MM/yyyy HH:mm}
+
+        Este alerta foi enviado automaticamente pelo StockAlert.
+        """;
     }
 
-    private bool CanSendNotification(StockAlert.Domain.Entities.AlertRule rule)
+    private static bool CanSendNotification(StockAlert.Domain.Entities.AlertRule rule)
     {
-        if (rule.LastTriggeredAt == null) return true;
+        if (rule.LastTriggeredAt is null)
+            return true;
 
         var cooldown = rule.CooldownMinutes ?? 15;
-        // Compara o tempo atual com o último disparo + tempo de espera (cooldown)
+
         return DateTime.UtcNow >= rule.LastTriggeredAt.Value.AddMinutes(cooldown);
     }
 }

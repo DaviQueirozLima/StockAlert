@@ -1,6 +1,4 @@
-﻿// Local: src/StockAlert.Infrastructure/Services/SmtpEmailService.cs
-
-using System.Net;
+﻿using System.Net;
 using System.Net.Mail;
 using Microsoft.Extensions.Configuration;
 using StockAlert.Domain.Services;

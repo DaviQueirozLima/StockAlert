@@ -1,66 +1,79 @@
-﻿using System.Net.Http;
-using System.Text.Json;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using StockAlert.Domain.Services;
 using StockAlert.Domain.Services.Dtos;
 using StockAlert.Infrastructure.ExternalServices.Brapi.Models;
+using System.Net.Http.Json;
 
-namespace StockAlert.Infrastructure.ExternalServices.Brapi
+namespace StockAlert.Infrastructure.ExternalServices.Brapi;
+
+public class BrapiService : IBrapiService
 {
-    public class BrapiService : IBrapiService
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<BrapiService> _logger;
+    private readonly string _token;
+
+    public BrapiService(HttpClient httpClient, IConfiguration configuration, ILogger<BrapiService> logger)
     {
-        private readonly HttpClient _httpClient;
-        private readonly string _brapiBaseUrl;
-        private readonly string _brapiToken; 
+        _httpClient = httpClient;
+        _logger = logger;
+        _token = configuration["Brapi:Token"]
+            ?? throw new ArgumentNullException("Brapi:Token is missing.");
 
-        public BrapiService(HttpClient httpClient, IConfiguration configuration)
+        if (_httpClient.BaseAddress == null)
         {
-            _httpClient = httpClient;
-            _brapiBaseUrl = configuration["Brapi:BaseUrl"]
-                            ?? throw new ArgumentNullException("Brapi:BaseUrl configuration is missing.");
-            _brapiToken = configuration["Brapi:Token"]
-                          ?? throw new ArgumentNullException("Brapi:Token configuration is missing."); 
+            var baseUrl = configuration["Brapi:BaseUrl"]
+                ?? throw new ArgumentNullException("Brapi:BaseUrl is missing.");
+
+            _httpClient.BaseAddress = new Uri(baseUrl);
         }
+    }
 
-        public async Task<StockQuoteDto?> GetStockQuoteAsync(string stockSymbol)
+    public async Task<StockQuoteDto?> GetStockQuoteAsync(string stockSymbol)
+    {
+        try
         {
-            // Usando o token lido da configuração
-            var requestUrl = $"{_brapiBaseUrl}/quote/{stockSymbol}?token={_brapiToken}";
+            // Normaliza o símbolo (ex: PETR4 -> PETR4.SA)
+            var normalizedSymbol = stockSymbol.ToUpper();
 
-            var response = await _httpClient.GetAsync(requestUrl);
-            response.EnsureSuccessStatusCode();
+            if (!normalizedSymbol.EndsWith(".SA"))
+                normalizedSymbol += ".SA";
 
-            var content = await response.Content.ReadAsStringAsync();
+            var response = await _httpClient.GetFromJsonAsync<BrapiResponse>(
+                    $"quote/{normalizedSymbol}?token={_token}"
+                                );
 
-            // Adicionando verificação para o resultado da desserialização
-            var brapiResponse = JsonSerializer.Deserialize<BrapiResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var stockData = response?.Results?.FirstOrDefault();
 
-            // Verificando se brapiResponse é nulo e se Results é nulo ou vazio
-            if (brapiResponse?.Results == null || !brapiResponse.Results.Any())
+            if (stockData is null || stockData.RegularMarketPrice <= 0)
             {
+                _logger.LogInformation("No valid data found for symbol: {Symbol}", normalizedSymbol);
                 return null;
             }
 
-            var stockData = brapiResponse.Results.FirstOrDefault();
+            if (!DateTime.TryParse(stockData.RegularMarketTime, out var lastRefresh))
+            {
+                _logger.LogWarning(
+                    "Could not parse market time for {Symbol}: {Time}",
+                    normalizedSymbol,
+                    stockData.RegularMarketTime
+                );
 
-            // Verificando se stockData é nulo ou se suas propriedades essenciais são nulas
-            if (stockData == null || stockData.Symbol == null || stockData.RegularMarketPrice == 0 || stockData.RegularMarketTime == null)
-            {
-                return null;
-            }
-            DateTime lastRefreshDateTime;
-            if (!DateTime.TryParse(stockData.RegularMarketTime, out lastRefreshDateTime))
-            {
-                // Se a conversão da string de data falhar, podemos logar e retornar null
-                return null;
+                lastRefresh = DateTime.UtcNow;
             }
 
             return new StockQuoteDto
             {
-                Symbol = stockData.Symbol,
+                Symbol = stockData.Symbol ?? normalizedSymbol,
                 Price = stockData.RegularMarketPrice,
-                LastRefresh = lastRefreshDateTime 
+                PreviousClose = stockData.RegularMarketPreviousClose,
+                LastRefresh = lastRefresh
             };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching stock quote for {Symbol}", stockSymbol);
+            return null;
         }
     }
 }

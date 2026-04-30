@@ -51,5 +51,10 @@ namespace StockAlert.Infrastructure.Repositories
                 .Where(r => r.UserId == userId && r.DeletedAt == null)
                 .ToListAsync();
         }
+        public async Task<AlertRule?> GetByIdAsync(Guid id)
+        {
+            return await _dbContext.AlertRules
+                .FirstOrDefaultAsync(r => r.Id == id && r.DeletedAt == null);
+        }
     }
 }

@@ -29,7 +29,7 @@ namespace StockAlert.Domain.Entities
         // Mensagem enviada (texto do alerta) — útil para auditoria
         public string Message { get; set; } = default!;
 
-        // Destinatário exato usado: chatId (Telegram) ou email (Email) ou telefone (WhatsApp)
+        // Destinatário exato usado: email ou telefone
         public string Recipient { get; set; } = default!;
 
         // Id externo retornado pelo provedor (opcional)

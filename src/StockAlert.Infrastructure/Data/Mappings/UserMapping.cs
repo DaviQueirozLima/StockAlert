@@ -28,19 +28,18 @@ namespace StockAlert.Infrastructure.Data.Mappings
                 .HasMaxLength(200)
                 .IsRequired(false);
 
-            builder.Property(u => u.TelegramChatId)
-                .HasMaxLength(100)
-                .IsRequired(false);
-
             builder.Property(u => u.PasswordHash)
                 .HasMaxLength(300)
                 .IsRequired(false);
 
             // flags booleanas (defaults)
             builder.Property(u => u.IsActive).HasDefaultValue(true);
-            builder.Property(u => u.IsTelegramVerified).HasDefaultValue(false);
             builder.Property(u => u.NotifyByEmail).HasDefaultValue(true);
-            builder.Property(u => u.NotifyByTelegram).HasDefaultValue(true);
+
+            // telefone é opcional, mas se fornecido deve ter um tamanho razoável
+            builder.Property(u => u.PhoneNumber)
+                .HasMaxLength(20)
+                .IsRequired(false);
 
             // timestamps
             builder.Property(u => u.CreatedAt)
@@ -59,7 +58,6 @@ namespace StockAlert.Infrastructure.Data.Mappings
             // índices com nomes explícitos
             builder.HasIndex(u => u.Email).IsUnique().HasDatabaseName("ux_users_email");
             builder.HasIndex(u => u.GoogleId).IsUnique().HasDatabaseName("ux_users_google_id");
-            builder.HasIndex(u => u.TelegramChatId).IsUnique().HasDatabaseName("ux_users_telegram_chat_id").HasFilter("\"TelegramChatId\" IS NOT NULL");
 
             // relacionamentos
             builder.HasMany(u => u.Alerts)
