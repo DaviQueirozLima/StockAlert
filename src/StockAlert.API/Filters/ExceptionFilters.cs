@@ -34,9 +34,12 @@ namespace StockAlert.API.Filters
 
                 default:
                     context.HttpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
-                    context.Result = new ObjectResult(
-                        new ResponseErrorJson("Unknown error")
-                    );
+                    context.Result = new ObjectResult(new
+                    {
+                        message = context.Exception.Message,
+                        innerException = context.Exception.InnerException?.Message,
+                        stackTrace = context.Exception.StackTrace
+                    });
                     break;
             }
 
