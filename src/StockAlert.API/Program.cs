@@ -86,6 +86,7 @@ builder.Services.AddScoped<ILoggedUserAccessor, LoggedUserAccessor>();
 
 #region DI - UseCases
 
+builder.Services.AddScoped<GetAlertRulesUseCase>();
 builder.Services.AddScoped<LoginWithGoogleUseCase>();
 builder.Services.AddScoped<StockAlert.Application.Stock.UseCases.RegisterStockUseCase>();
 builder.Services.AddScoped<RegisterAlertRuleUseCase>();
