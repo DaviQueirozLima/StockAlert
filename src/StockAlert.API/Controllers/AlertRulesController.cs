@@ -13,12 +13,21 @@ namespace StockAlert.API.Controllers
         private readonly RegisterAlertRuleUseCase _useCase;
         private readonly UpdateAlertRuleUseCase _updateUseCase;
         private readonly DeleteAlertRuleUseCase _deleteUseCase;
+        private readonly GetAlertRulesUseCase _getUseCase;
 
-        public AlertRulesController(RegisterAlertRuleUseCase useCase, UpdateAlertRuleUseCase updateUseCase, DeleteAlertRuleUseCase deleteUseCase)
+        public AlertRulesController(RegisterAlertRuleUseCase useCase, UpdateAlertRuleUseCase updateUseCase, DeleteAlertRuleUseCase deleteUseCase, GetAlertRulesUseCase getUseCase)
         {
             _useCase = useCase;
             _updateUseCase = updateUseCase;
             _deleteUseCase = deleteUseCase;
+            _getUseCase = getUseCase;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAll()
+        {
+            var response = await _getUseCase.Execute();
+            return Ok(response);
         }
 
         [HttpPost]
